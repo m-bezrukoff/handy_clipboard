@@ -40,10 +40,11 @@ constexpr size_t kMaxStoredBytesPerItem = 4 * 1024 * 1024;
 constexpr int kPopupWidth = 720;
 constexpr int kPopupDefaultHeight = 378;
 constexpr int kPopupHeaderHeight = 113;
-constexpr int kPopupContentLeft = 40;
-constexpr int kPopupListLeft = 40;
-constexpr int kPopupListTop = 123;
-constexpr int kPopupListBottomMargin = 35;
+constexpr int kPopupOuterInset = 37;
+constexpr int kPopupContentLeft = kPopupOuterInset;
+constexpr int kPopupListLeft = kPopupOuterInset;
+constexpr int kPopupListTop = 120;
+constexpr int kPopupListBottomMargin = 32;
 constexpr int kPopupScrollbarLaneWidth = 15;
 constexpr int kPopupScrollbarWidth = 5;
 constexpr int kPopupScrollbarMinHeight = 36;
@@ -51,7 +52,7 @@ constexpr int kHistoryItemHeight = 56;
 constexpr int kHistoryDeleteButtonSize = 24;
 constexpr int kHistoryDeleteButtonMargin = 15;
 constexpr int kPopupCloseButtonSize = 36;
-constexpr int kPopupCloseButtonMargin = 47;
+constexpr int kPopupCloseButtonMargin = 44;
 constexpr int kWindowCornerRadius = 6;
 constexpr int kPopupMinWidth = 520;
 constexpr int kPopupMinHeight = 300;
@@ -1440,16 +1441,18 @@ RECT PopupCloseButtonRect(RECT clientRect) {
 RECT PopupListRect(RECT clientRect) {
     return RECT{kPopupListLeft,
                 kPopupListTop,
-                clientRect.right - kPopupListLeft - kPopupScrollbarLaneWidth,
+                clientRect.right - kPopupListLeft,
                 clientRect.bottom - kPopupListBottomMargin};
 }
 
 RECT PopupScrollbarTrackRect(RECT clientRect) {
-    const int left = clientRect.right - kPopupListLeft - kPopupScrollbarWidth;
+    const RECT listRect = PopupListRect(clientRect);
+    const int left = listRect.right - kPopupScrollbarLaneWidth +
+                     (kPopupScrollbarLaneWidth - kPopupScrollbarWidth) / 2;
     return RECT{left,
-                kPopupListTop + 2,
+                listRect.top + 2,
                 left + kPopupScrollbarWidth,
-                clientRect.bottom - kPopupListBottomMargin - 2};
+                listRect.bottom - 2};
 }
 
 int PopupVisibleHistoryRows() {
@@ -1511,6 +1514,31 @@ void DrawPopupScrollbar(HWND hwnd, HDC dc) {
                     RGB(132, 139, 148));
 }
 
+void DrawPopupScrollbarOnList(HWND hwnd) {
+    if (!g_popupWindow || hwnd != g_listBox) {
+        return;
+    }
+
+    RECT popupClient{};
+    GetClientRect(g_popupWindow, &popupClient);
+
+    RECT track{};
+    RECT thumb{};
+    int maxTopIndex = 0;
+    if (!PopupScrollbarMetrics(popupClient, track, thumb, maxTopIndex)) {
+        return;
+    }
+
+    POINT origin{};
+    MapWindowPoints(g_popupWindow, hwnd, &origin, 1);
+    OffsetRect(&thumb, origin.x, origin.y);
+
+    HDC dc = GetDC(hwnd);
+    DrawRoundedRect(dc, thumb, kElementCornerRadius, RGB(132, 139, 148),
+                    RGB(132, 139, 148));
+    ReleaseDC(hwnd, dc);
+}
+
 void InvalidatePopupScrollbar() {
     if (!g_popupWindow || !IsWindowVisible(g_popupWindow)) {
         return;
@@ -1521,6 +1549,12 @@ void InvalidatePopupScrollbar() {
     RECT invalid = PopupScrollbarTrackRect(client);
     InflateRect(&invalid, 4, 4);
     InvalidateRect(g_popupWindow, &invalid, TRUE);
+
+    if (g_listBox) {
+        MapWindowPoints(g_popupWindow, g_listBox,
+                        reinterpret_cast<POINT*>(&invalid), 2);
+        InvalidateRect(g_listBox, &invalid, TRUE);
+    }
 }
 
 void SetPopupScrollFromThumbTop(int thumbTop) {
@@ -1551,6 +1585,36 @@ void SetPopupScrollFromThumbTop(int thumbTop) {
     SendMessageW(g_listBox, LB_SETTOPINDEX, topIndex, 0);
     InvalidateRect(g_listBox, nullptr, TRUE);
     InvalidatePopupScrollbar();
+}
+
+bool BeginPopupScrollbarDragFromPopupPoint(POINT point) {
+    if (!g_popupWindow) {
+        return false;
+    }
+
+    RECT client{};
+    GetClientRect(g_popupWindow, &client);
+
+    RECT track{};
+    RECT thumb{};
+    int maxTopIndex = 0;
+    if (!PopupScrollbarMetrics(client, track, thumb, maxTopIndex)) {
+        return false;
+    }
+
+    RECT hitRect = track;
+    InflateRect(&hitRect, 4, 2);
+    if (!PtInRect(&hitRect, point)) {
+        return false;
+    }
+
+    g_popupScrollbarDragging = true;
+    g_popupScrollbarDragOffsetY =
+        PtInRect(&thumb, point) ? point.y - thumb.top
+                                : RectHeight(thumb) / 2;
+    SetCapture(g_popupWindow);
+    SetPopupScrollFromThumbTop(point.y - g_popupScrollbarDragOffsetY);
+    return true;
 }
 
 LRESULT PopupHitTest(HWND hwnd, LPARAM lParam) {
@@ -1745,6 +1809,15 @@ void DrawHistoryListItem(const DRAWITEMSTRUCT& item) {
 }
 
 LRESULT CALLBACK ListBoxProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    if (message == WM_LBUTTONDOWN && g_popupWindow) {
+        POINT point{static_cast<short>(LOWORD(lParam)),
+                    static_cast<short>(HIWORD(lParam))};
+        MapWindowPoints(hwnd, g_popupWindow, &point, 1);
+        if (BeginPopupScrollbarDragFromPopupPoint(point)) {
+            return 0;
+        }
+    }
+
     if (message == WM_MOUSEMOVE) {
         TRACKMOUSEEVENT tracking{sizeof(TRACKMOUSEEVENT), TME_LEAVE, hwnd, 0};
         TrackMouseEvent(&tracking);
@@ -1821,6 +1894,7 @@ LRESULT CALLBACK ListBoxProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
 
     switch (message) {
     case WM_PAINT:
+        DrawPopupScrollbarOnList(hwnd);
         DrawHistoryListOutline(hwnd);
         break;
 
@@ -2005,26 +2079,11 @@ LRESULT CALLBACK PopupProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam
     }
 
     case WM_LBUTTONDOWN: {
-        RECT client{};
-        GetClientRect(hwnd, &client);
         POINT point{static_cast<short>(LOWORD(lParam)),
                     static_cast<short>(HIWORD(lParam))};
 
-        RECT track{};
-        RECT thumb{};
-        int maxTopIndex = 0;
-        if (PopupScrollbarMetrics(client, track, thumb, maxTopIndex)) {
-            RECT hitRect = track;
-            InflateRect(&hitRect, 8, 2);
-            if (PtInRect(&hitRect, point)) {
-                g_popupScrollbarDragging = true;
-                g_popupScrollbarDragOffsetY =
-                    PtInRect(&thumb, point) ? point.y - thumb.top
-                                            : RectHeight(thumb) / 2;
-                SetCapture(hwnd);
-                SetPopupScrollFromThumbTop(point.y - g_popupScrollbarDragOffsetY);
-                return 0;
-            }
+        if (BeginPopupScrollbarDragFromPopupPoint(point)) {
+            return 0;
         }
         break;
     }
