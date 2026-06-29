@@ -15,7 +15,7 @@ $exe = if ($OutputPath) {
         Join-Path $root $OutputPath
     }
 } else {
-    Join-Path $outDir "ExtendedClipboard.exe"
+    Join-Path $outDir "MaxB Handy Clipboard.exe"
 }
 $obj = Join-Path $outDir "main.obj"
 $res = Join-Path $outDir "app.res"

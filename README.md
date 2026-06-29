@@ -1,46 +1,87 @@
-# Extended Clipboard
+# MaxB Handy Clipboard
 
-Минимальное нативное Win32-приложение для Windows 11 x64, которое слушает буфер обмена, хранит до 20 последних записей и показывает их по глобальному хоткею.
+MaxB Handy Clipboard is a small native Win32 clipboard history utility for
+Windows 11 x64. It watches the clipboard, keeps up to 20 recent text entries,
+and opens a compact history window from a global hotkey.
 
-## Сборка
+## Features
 
-Нужны Visual Studio Build Tools с компонентом C++ x64.
+- Stores recent plain-text clipboard entries in memory.
+- Opens clipboard history with a configurable global shortcut.
+- Restores a selected entry to the clipboard and pastes it into the previous
+  active window.
+- Supports deleting individual history entries.
+- Runs from the Windows system tray.
+- Provides light and dark themes.
+- Provides English and Russian UI language selection, with English selected by
+  default.
+- Remembers the history window size and position.
+
+## Build
+
+Requirements:
+
+- Windows 11 x64
+- Visual Studio Build Tools with the C++ x64 toolchain
+- PowerShell
+
+Build the application:
 
 ```powershell
 .\build.ps1
 ```
 
-Готовый файл появится здесь:
+The executable is written to:
 
 ```text
-build\ExtendedClipboard.exe
+build\MaxB Handy Clipboard.exe
 ```
 
-## Использование
+## Usage
 
-1. Запустите `build\ExtendedClipboard.exe`.
-2. Копируйте данные как обычно.
-3. Нажмите `Ctrl+Shift+V`.
-4. Кликните по нужной записи, чтобы восстановить ее в буфер и вставить в предыдущее активное окно.
-5. Нажмите маленький красный крестик справа в записи истории, чтобы удалить только эту запись.
+1. Run `build\MaxB Handy Clipboard.exe`.
+2. Copy text as usual.
+3. Press `Ctrl+Shift+V` to open clipboard history.
+4. Click a history entry to restore it to the clipboard and paste it into the
+   previous active window.
+5. Click the small delete button on the right side of an entry to remove only
+   that entry.
 
-Приложение живет в System Tray:
+## Tray Controls
 
-- левый клик по значку открывает окно истории;
-- правый клик по значку открывает окно настроек.
+- Left-click the tray icon to open clipboard history.
+- Right-click the tray icon to open settings.
 
-В настройках можно изменить комбинацию клавиш для открытия истории, включая сочетания с клавишей `Win` и вариант без обычной клавиши, например `Ctrl+Shift+Win`. Также можно отключить автоматическую вставку выбранной записи, включить запуск вместе с Windows или выйти из приложения.
+## Settings
 
-## Интерфейс
+The settings window lets you:
 
-Окна истории и настроек оформлены в стиле Windows 11: скругленные углы, Segoe UI, светлые панели, карточки записей и аккуратные отступы.
-Окно истории можно переносить по экрану и менять его размер. При первом показе оно открывается по центру текущего монитора в размере прототипа, после этого приложение запоминает его размер и положение.
-Если окно истории открыто, новые скопированные текстовые записи сразу появляются вверху списка.
+- Change the global shortcut, including shortcuts that use the `Win` key.
+- Use modifier-only shortcuts such as `Ctrl+Shift+Win`.
+- Enable or disable launch at Windows startup.
+- Switch between light and dark themes.
+- Switch the UI language between English and Russian.
+- Exit the application.
 
-## Примечания
+## Interface
 
-- История живет в памяти текущего запуска и очищается при закрытии.
-- Приложение хранит до 20 записей и сортирует их по свежести: новые и использованные записи находятся выше.
-- В историю попадает только обычный текст (`CF_UNICODETEXT`). Файлы, изображения и прочие форматы буфера обмена игнорируются.
-- Для экономии памяти одна текстовая запись ограничена 4 МБ.
-- Вставка в приложения, запущенные от администратора, может не сработать, если Extended Clipboard запущен без повышенных прав.
+The history and settings windows use a compact Windows 11-style interface with
+Segoe UI typography, 6 px corner radius, light separators, hover states, and
+resizable clipboard history.
+
+When the history window is open, new copied text entries appear at the top of
+the list immediately. On first launch, the history window opens near the center
+of the current monitor; after that, the application remembers its size and
+position.
+
+## Notes
+
+- Clipboard history is stored only in memory and is cleared when the application
+  exits.
+- The application stores up to 20 entries and sorts them by recency. New and
+  recently used entries appear higher in the list.
+- Only plain text (`CF_UNICODETEXT`) is stored. Files, images, and other
+  clipboard formats are ignored.
+- A single text entry is limited to 4 MB to keep memory usage predictable.
+- Pasting into applications running as administrator may fail if MaxB Handy
+  Clipboard is running without elevated privileges.
