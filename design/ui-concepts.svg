@@ -1,0 +1,242 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1300" viewBox="0 0 1600 1300">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f6f8fb"/>
+      <stop offset="1" stop-color="#eef3f9"/>
+    </linearGradient>
+    <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f7de1"/>
+      <stop offset="1" stop-color="#0b5cad"/>
+    </linearGradient>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2dd4bf"/>
+      <stop offset="1" stop-color="#0f766e"/>
+    </linearGradient>
+    <linearGradient id="violet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#5b21b6"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#172033" flood-opacity="0.16"/>
+    </filter>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#172033" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .root { font-family: "Segoe UI", Arial, sans-serif; }
+      .label { font-size: 18px; fill: #64748b; }
+      .h1 { font-size: 34px; font-weight: 700; fill: #0f172a; }
+      .h2 { font-size: 25px; font-weight: 700; fill: #0f172a; }
+      .h3 { font-size: 18px; font-weight: 700; fill: #0f172a; }
+      .body { font-size: 17px; fill: #334155; }
+      .small { font-size: 14px; fill: #64748b; }
+      .tiny { font-size: 12px; fill: #64748b; }
+      .caption { font-size: 15px; fill: #475569; }
+      .white { fill: #ffffff; }
+      .panel { fill: #ffffff; stroke: #d8e1ec; stroke-width: 1; }
+      .soft { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1; }
+      .line { stroke: #e2e8f0; stroke-width: 1; }
+      .button { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; }
+      .primary { fill: #0b5cad; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="1300" fill="url(#bg)"/>
+  <g class="root">
+    <text x="64" y="68" class="h1">Extended Clipboard: 3 UI directions + icon concepts</text>
+    <text x="64" y="100" class="label">Цель: больше воздуха, без обрезанных контролов, понятные зоны, настоящие Windows 11 rounded corners.</text>
+
+    <!-- Option 1 -->
+    <g transform="translate(64 150)">
+      <text x="0" y="0" class="h2">01. Fluent Compact</text>
+      <text x="0" y="28" class="caption">Лучший кандидат: компактно, спокойно, нативно для tray-приложения.</text>
+
+      <g transform="translate(0 60)" filter="url(#shadow)">
+        <rect x="0" y="0" width="470" height="250" rx="24" class="panel"/>
+        <rect x="22" y="20" width="426" height="54" rx="18" fill="#f8fbff"/>
+        <text x="42" y="54" class="h2">История буфера</text>
+        <rect x="344" y="30" width="76" height="26" rx="13" fill="#e7f1ff"/>
+        <text x="382" y="49" text-anchor="middle" font-size="15" fill="#0b5cad">5 / 20</text>
+        <text x="42" y="90" class="small">Ctrl+Shift+Win</text>
+        <line x1="42" y1="110" x2="428" y2="110" class="line"/>
+
+        <g transform="translate(34 128)">
+          <rect x="0" y="0" width="402" height="52" rx="16" fill="#f7fbff" stroke="#93c5fd"/>
+          <rect x="14" y="14" width="30" height="24" rx="12" fill="url(#blue)"/>
+          <text x="29" y="31" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">1</text>
+          <text x="58" y="32" class="body">31.56.205.85</text>
+        </g>
+        <g transform="translate(34 184)">
+          <rect x="0" y="0" width="402" height="42" rx="14" fill="#fff" stroke="#e2e8f0"/>
+          <rect x="14" y="10" width="30" height="22" rx="11" fill="#e7f1ff"/>
+          <text x="29" y="26" text-anchor="middle" font-size="12" font-weight="700" fill="#0b5cad">2</text>
+          <text x="58" y="27" class="caption">Вставить выбранную запись...</text>
+        </g>
+      </g>
+
+      <g transform="translate(500 60)" filter="url(#shadow)">
+        <rect x="0" y="0" width="470" height="390" rx="24" class="panel"/>
+        <text x="34" y="50" class="h2">Extended Clipboard</text>
+        <text x="34" y="80" class="small">Записей в истории: 5 / 20</text>
+        <rect x="30" y="106" width="410" height="112" rx="18" fill="#f8fbff" stroke="#e2e8f0"/>
+        <text x="54" y="140" class="h3">Комбинация для истории</text>
+        <rect x="54" y="154" width="210" height="38" rx="12" fill="#fff" stroke="#cbd5e1"/>
+        <text x="72" y="179" class="body">Ctrl+Shift+Win</text>
+        <rect x="282" y="154" width="120" height="38" rx="12" fill="#0b5cad"/>
+        <text x="342" y="179" text-anchor="middle" font-size="16" font-weight="600" fill="#fff">Применить</text>
+        <text x="54" y="210" class="tiny">ЛКМ: история, ПКМ: настройки</text>
+
+        <rect x="30" y="238" width="410" height="64" rx="18" fill="#fff" stroke="#e2e8f0"/>
+        <rect x="54" y="258" width="22" height="22" rx="6" fill="#0b5cad"/>
+        <path d="M59 269 l5 5 l9 -11" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="88" y="275" class="body">Вставлять выбранную запись автоматически</text>
+
+        <rect x="30" y="322" width="128" height="38" rx="12" class="button"/>
+        <text x="94" y="346" text-anchor="middle" class="caption">Очистить</text>
+        <rect x="174" y="322" width="106" height="38" rx="12" class="button"/>
+        <text x="227" y="346" text-anchor="middle" class="caption">Закрыть</text>
+        <rect x="296" y="322" width="106" height="38" rx="12" fill="#fff5f5" stroke="#fecaca"/>
+        <text x="349" y="346" text-anchor="middle" font-size="15" fill="#b91c1c">Выход</text>
+      </g>
+    </g>
+
+    <!-- Option 2 -->
+    <g transform="translate(64 650)">
+      <text x="0" y="0" class="h2">02. Command Palette</text>
+      <text x="0" y="28" class="caption">Быстрый, клавиатурный стиль: поиск/выбор, плотнее, но все еще с воздухом.</text>
+
+      <g transform="translate(0 60)" filter="url(#shadow)">
+        <rect x="0" y="0" width="470" height="270" rx="26" fill="#111827"/>
+        <rect x="22" y="22" width="426" height="46" rx="16" fill="#1f2937"/>
+        <text x="46" y="52" font-size="18" fill="#e5e7eb">Поиск или выбор из истории...</text>
+        <text x="364" y="52" font-size="14" fill="#93c5fd">Ctrl+Shift+Win</text>
+        <g transform="translate(22 86)">
+          <rect x="0" y="0" width="426" height="52" rx="16" fill="#263244" stroke="#3b82f6"/>
+          <rect x="16" y="15" width="28" height="22" rx="11" fill="#3b82f6"/>
+          <text x="30" y="31" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+          <text x="60" y="33" font-size="17" fill="#f8fafc">31.56.205.85</text>
+          <text x="360" y="33" font-size="13" fill="#9ca3af">Enter</text>
+        </g>
+        <g transform="translate(22 146)">
+          <rect x="0" y="0" width="426" height="42" rx="14" fill="#172033"/>
+          <text x="18" y="27" font-size="15" fill="#cbd5e1">2</text>
+          <text x="60" y="27" font-size="15" fill="#cbd5e1">E-mail: support@example.com</text>
+        </g>
+        <g transform="translate(22 194)">
+          <rect x="0" y="0" width="426" height="42" rx="14" fill="#172033"/>
+          <text x="18" y="27" font-size="15" fill="#cbd5e1">3</text>
+          <text x="60" y="27" font-size="15" fill="#cbd5e1">C:\Projects\ExtendedClipboard</text>
+        </g>
+      </g>
+
+      <g transform="translate(500 60)" filter="url(#shadow)">
+        <rect x="0" y="0" width="470" height="390" rx="26" fill="#111827"/>
+        <text x="34" y="50" font-size="25" font-weight="700" fill="#f8fafc">Settings</text>
+        <text x="34" y="78" font-size="14" fill="#9ca3af">5 записей, быстрый режим выбора</text>
+        <rect x="30" y="106" width="410" height="92" rx="18" fill="#1f2937"/>
+        <text x="52" y="136" font-size="16" font-weight="700" fill="#e5e7eb">Shortcut</text>
+        <rect x="52" y="152" width="224" height="34" rx="10" fill="#111827" stroke="#374151"/>
+        <text x="68" y="174" font-size="15" fill="#e5e7eb">Ctrl+Shift+Win</text>
+        <rect x="294" y="152" width="118" height="34" rx="10" fill="#3b82f6"/>
+        <text x="353" y="174" text-anchor="middle" font-size="15" font-weight="600" fill="#fff">Apply</text>
+        <rect x="30" y="218" width="410" height="64" rx="18" fill="#1f2937"/>
+        <circle cx="58" cy="250" r="12" fill="#22c55e"/>
+        <path d="M52 250 l5 5 l10 -12" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="86" y="256" font-size="16" fill="#e5e7eb">Auto paste after click</text>
+        <rect x="30" y="306" width="128" height="38" rx="12" fill="#1f2937" stroke="#374151"/>
+        <text x="94" y="330" text-anchor="middle" font-size="15" fill="#d1d5db">Clear</text>
+        <rect x="174" y="306" width="106" height="38" rx="12" fill="#1f2937" stroke="#374151"/>
+        <text x="227" y="330" text-anchor="middle" font-size="15" fill="#d1d5db">Close</text>
+        <rect x="296" y="306" width="106" height="38" rx="12" fill="#7f1d1d"/>
+        <text x="349" y="330" text-anchor="middle" font-size="15" fill="#fee2e2">Exit</text>
+      </g>
+    </g>
+
+    <!-- Option 3 -->
+    <g transform="translate(64 1080)">
+      <text x="0" y="0" class="h2">03. Split Utility</text>
+      <text x="0" y="28" class="caption">Больше “приложение”, меньше popup: удобно, если позже добавятся поиск, пины, фильтры, избранное.</text>
+    </g>
+
+    <g transform="translate(64 1140)" filter="url(#shadow)">
+      <rect x="0" y="0" width="970" height="128" rx="26" class="panel"/>
+      <rect x="18" y="18" width="170" height="92" rx="18" fill="#f1f5f9"/>
+      <text x="42" y="54" class="h3">История</text>
+      <text x="42" y="82" class="small">5 / 20 записей</text>
+      <rect x="210" y="18" width="300" height="92" rx="18" fill="#f8fbff" stroke="#bfdbfe"/>
+      <rect x="232" y="48" width="32" height="24" rx="12" fill="url(#teal)"/>
+      <text x="248" y="65" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">1</text>
+      <text x="282" y="65" class="body">31.56.205.85</text>
+      <rect x="530" y="18" width="196" height="92" rx="18" fill="#fff" stroke="#e2e8f0"/>
+      <text x="552" y="54" class="h3">Hotkey</text>
+      <text x="552" y="82" class="small">Ctrl+Shift+Win</text>
+      <rect x="746" y="18" width="196" height="92" rx="18" fill="#fff" stroke="#e2e8f0"/>
+      <text x="768" y="54" class="h3">Behavior</text>
+      <text x="768" y="82" class="small">Auto paste: on</text>
+    </g>
+
+    <!-- Icons -->
+    <g transform="translate(1120 150)">
+      <text x="0" y="0" class="h2">Icon directions</text>
+      <text x="0" y="28" class="caption">Лучше всего читаются в 16x16: простая форма, 1 акцент, минимум деталей.</text>
+
+      <g transform="translate(0 70)">
+        <rect x="0" y="0" width="130" height="130" rx="30" fill="#e7f1ff"/>
+        <rect x="42" y="30" width="56" height="74" rx="12" fill="#fff" stroke="#0b5cad" stroke-width="5"/>
+        <rect x="54" y="22" width="32" height="18" rx="8" fill="url(#blue)"/>
+        <path d="M52 58 h36 M52 74 h28 M52 90 h22" stroke="#0b5cad" stroke-width="5" stroke-linecap="round"/>
+        <text x="65" y="160" text-anchor="middle" class="small">Clipboard</text>
+      </g>
+
+      <g transform="translate(160 70)">
+        <rect x="0" y="0" width="130" height="130" rx="30" fill="#ecfeff"/>
+        <rect x="38" y="34" width="54" height="70" rx="12" fill="#fff" stroke="#0f766e" stroke-width="5"/>
+        <rect x="50" y="26" width="30" height="18" rx="8" fill="url(#teal)"/>
+        <path d="M82 78 a24 24 0 1 1 -8 -18" fill="none" stroke="#0f766e" stroke-width="6" stroke-linecap="round"/>
+        <path d="M74 54 l16 2 l-8 14" fill="none" stroke="#0f766e" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="65" y="160" text-anchor="middle" class="small">History</text>
+      </g>
+
+      <g transform="translate(320 70)">
+        <rect x="0" y="0" width="130" height="130" rx="30" fill="#f5f3ff"/>
+        <rect x="32" y="46" width="58" height="58" rx="14" fill="#fff" stroke="#5b21b6" stroke-width="5"/>
+        <rect x="44" y="34" width="58" height="58" rx="14" fill="#fff" stroke="#8b5cf6" stroke-width="5"/>
+        <path d="M62 60 h22 M62 76 h28" stroke="#5b21b6" stroke-width="5" stroke-linecap="round"/>
+        <text x="65" y="160" text-anchor="middle" class="small">Stack</text>
+      </g>
+
+      <g transform="translate(0 250)">
+        <rect x="0" y="0" width="130" height="130" rx="30" fill="#eff6ff"/>
+        <rect x="38" y="30" width="56" height="74" rx="12" fill="#fff" stroke="#0b5cad" stroke-width="5"/>
+        <rect x="50" y="22" width="32" height="18" rx="8" fill="#0b5cad"/>
+        <path d="M64 68 l10 10 l20 -26" fill="none" stroke="#22c55e" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="65" y="160" text-anchor="middle" class="small">Done</text>
+      </g>
+
+      <g transform="translate(160 250)">
+        <rect x="0" y="0" width="130" height="130" rx="30" fill="#fff7ed"/>
+        <rect x="36" y="32" width="58" height="74" rx="14" fill="#fff" stroke="#ea580c" stroke-width="5"/>
+        <rect x="48" y="24" width="34" height="18" rx="8" fill="#fb923c"/>
+        <path d="M82 58 l16 -8 l-6 17" fill="none" stroke="#ea580c" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M92 51 c12 20 -5 42 -28 38 c-19 -3 -26 -24 -15 -38" fill="none" stroke="#ea580c" stroke-width="6" stroke-linecap="round"/>
+        <text x="65" y="160" text-anchor="middle" class="small">Loop</text>
+      </g>
+
+      <g transform="translate(320 250)">
+        <rect x="0" y="0" width="130" height="130" rx="30" fill="#eef2ff"/>
+        <rect x="36" y="36" width="58" height="70" rx="15" fill="#fff" stroke="#4f46e5" stroke-width="5"/>
+        <rect x="48" y="28" width="34" height="18" rx="8" fill="#4f46e5"/>
+        <path d="M78 54 l-8 18 h16 l-10 24" fill="none" stroke="#4f46e5" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="65" y="160" text-anchor="middle" class="small">Quick</text>
+      </g>
+
+      <rect x="0" y="450" width="450" height="230" rx="24" class="panel" filter="url(#softShadow)"/>
+      <text x="28" y="492" class="h3">Рекомендация по иконке</text>
+      <text x="28" y="526" class="body">Выбрать вариант Stack или History:</text>
+      <text x="28" y="558" class="small">• понятны как “история буфера”;</text>
+      <text x="28" y="584" class="small">• сохраняют силуэт в tray 16x16;</text>
+      <text x="28" y="610" class="small">• хорошо работают в Windows 11 светлой и темной теме.</text>
+      <text x="28" y="650" class="small">Формат: .ico 16, 24, 32, 48, 64, 128, 256 px.</text>
+    </g>
+  </g>
+</svg>
