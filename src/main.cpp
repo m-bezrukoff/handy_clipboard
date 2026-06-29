@@ -39,11 +39,11 @@ constexpr size_t kMaxHistoryItems = 20;
 constexpr size_t kMaxStoredBytesPerItem = 4 * 1024 * 1024;
 constexpr int kPopupWidth = 720;
 constexpr int kPopupDefaultHeight = 378;
-constexpr int kPopupHeaderHeight = 118;
-constexpr int kPopupContentLeft = 60;
-constexpr int kPopupListLeft = 45;
-constexpr int kPopupListTop = 128;
-constexpr int kPopupListBottomMargin = 40;
+constexpr int kPopupHeaderHeight = 113;
+constexpr int kPopupContentLeft = 40;
+constexpr int kPopupListLeft = 40;
+constexpr int kPopupListTop = 123;
+constexpr int kPopupListBottomMargin = 35;
 constexpr int kPopupScrollbarLaneWidth = 15;
 constexpr int kPopupScrollbarWidth = 5;
 constexpr int kPopupScrollbarMinHeight = 36;
@@ -52,7 +52,7 @@ constexpr int kHistoryCardHeight = 50;
 constexpr int kHistoryDeleteButtonSize = 24;
 constexpr int kHistoryDeleteButtonMargin = 15;
 constexpr int kPopupCloseButtonSize = 36;
-constexpr int kPopupCloseButtonMargin = 44;
+constexpr int kPopupCloseButtonMargin = 47;
 constexpr int kWindowCornerRadius = 34;
 constexpr int kPopupMinWidth = 520;
 constexpr int kPopupMinHeight = 300;
@@ -176,7 +176,7 @@ void EnsureUiResources() {
         g_titleFont = CreateUiFont(14, FW_SEMIBOLD);
     }
     if (!g_popupTitleFont) {
-        g_popupTitleFont = CreateUiFont(16, FW_BOLD);
+        g_popupTitleFont = CreateUiFont(16, FW_SEMIBOLD);
     }
     if (!g_bodyFont) {
         g_bodyFont = CreateUiFont(10, FW_NORMAL);
@@ -1301,7 +1301,7 @@ void DrawPopupChrome(HWND hwnd, HDC dc) {
     GetClientRect(hwnd, &client);
     FillSolidRect(dc, client, kColorSurface);
 
-    RECT titleRect{kPopupContentLeft, 49, client.right - 96, 96};
+    RECT titleRect{kPopupContentLeft, 44, client.right - 96, 91};
     DrawTextInRect(dc, L"История буфера", titleRect, g_popupTitleFont, kColorText,
                    DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
 
@@ -1311,7 +1311,7 @@ void DrawPopupChrome(HWND hwnd, HDC dc) {
 }
 
 RECT PopupCloseButtonRect(RECT clientRect) {
-    const int top = 44;
+    const int top = 39;
     return RECT{clientRect.right - kPopupCloseButtonMargin -
                     kPopupCloseButtonSize,
                 top,

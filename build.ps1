@@ -19,9 +19,116 @@ $exe = if ($OutputPath) {
 }
 $obj = Join-Path $outDir "main.obj"
 $res = Join-Path $outDir "app.res"
+$icon = Join-Path $outDir "app.ico"
 
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $exe) | Out-Null
+
+function New-RoundRectPath {
+    param(
+        [float]$X,
+        [float]$Y,
+        [float]$Width,
+        [float]$Height,
+        [float]$Radius
+    )
+
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $diameter = $Radius * 2
+    $path.AddArc($X, $Y, $diameter, $diameter, 180, 90)
+    $path.AddArc($X + $Width - $diameter, $Y, $diameter, $diameter, 270, 90)
+    $path.AddArc($X + $Width - $diameter, $Y + $Height - $diameter, $diameter, $diameter, 0, 90)
+    $path.AddArc($X, $Y + $Height - $diameter, $diameter, $diameter, 90, 90)
+    $path.CloseFigure()
+    return $path
+}
+
+function New-AppIcon {
+    param([string]$Path)
+
+    Add-Type -AssemblyName System.Drawing
+
+    $sizes = @(16, 24, 32, 48, 64, 128, 256)
+    $pngs = New-Object System.Collections.Generic.List[byte[]]
+
+    foreach ($size in $sizes) {
+        $bitmap = New-Object System.Drawing.Bitmap $size, $size, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+        $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+        $graphics.Clear([System.Drawing.Color]::Transparent)
+
+        $scale = [float]$size / 130.0
+        $blue = [System.Drawing.Color]::FromArgb(255, 11, 92, 173)
+
+        $background = New-RoundRectPath 0 0 $size $size (28 * $scale)
+        $backgroundBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 231, 241, 255))
+        $graphics.FillPath($backgroundBrush, $background)
+
+        $paper = New-RoundRectPath (30 * $scale) (21 * $scale) (70 * $scale) (88 * $scale) (12 * $scale)
+        $paperBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
+        $paperPen = New-Object System.Drawing.Pen ($blue), ([Math]::Max(1.4, 6 * $scale))
+        $graphics.FillPath($paperBrush, $paper)
+        $graphics.DrawPath($paperPen, $paper)
+
+        $clip = New-RoundRectPath (48 * $scale) (12 * $scale) (34 * $scale) (22 * $scale) (8 * $scale)
+        $clipBounds = [System.Drawing.RectangleF]::new(48 * $scale, 12 * $scale, 34 * $scale, 22 * $scale)
+        $clipBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $clipBounds, ([System.Drawing.Color]::FromArgb(255, 47, 125, 225)), $blue, ([System.Drawing.Drawing2D.LinearGradientMode]::ForwardDiagonal)
+        $graphics.FillPath($clipBrush, $clip)
+
+        $linePen = New-Object System.Drawing.Pen ($blue), ([Math]::Max(1.3, 6 * $scale))
+        $linePen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $linePen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
+        $graphics.DrawLine($linePen, 43 * $scale, 56 * $scale, 86 * $scale, 56 * $scale)
+        $graphics.DrawLine($linePen, 43 * $scale, 75 * $scale, 78 * $scale, 75 * $scale)
+        $graphics.DrawLine($linePen, 43 * $scale, 94 * $scale, 70 * $scale, 94 * $scale)
+
+        $stream = New-Object System.IO.MemoryStream
+        $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
+        $pngs.Add($stream.ToArray())
+
+        $linePen.Dispose()
+        $clipBrush.Dispose()
+        $clip.Dispose()
+        $paperPen.Dispose()
+        $paperBrush.Dispose()
+        $paper.Dispose()
+        $backgroundBrush.Dispose()
+        $background.Dispose()
+        $graphics.Dispose()
+        $bitmap.Dispose()
+        $stream.Dispose()
+    }
+
+    $file = [System.IO.File]::Open($Path, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write)
+    $writer = New-Object System.IO.BinaryWriter $file
+    $writer.Write([UInt16]0)
+    $writer.Write([UInt16]1)
+    $writer.Write([UInt16]$sizes.Count)
+
+    $offset = 6 + (16 * $sizes.Count)
+    for ($i = 0; $i -lt $sizes.Count; $i++) {
+        $dimension = if ($sizes[$i] -eq 256) { 0 } else { [byte]$sizes[$i] }
+        $writer.Write([byte]$dimension)
+        $writer.Write([byte]$dimension)
+        $writer.Write([byte]0)
+        $writer.Write([byte]0)
+        $writer.Write([UInt16]1)
+        $writer.Write([UInt16]32)
+        $writer.Write([UInt32]$pngs[$i].Length)
+        $writer.Write([UInt32]$offset)
+        $offset += $pngs[$i].Length
+    }
+
+    foreach ($png in $pngs) {
+        $writer.Write($png)
+    }
+
+    $writer.Close()
+    $file.Close()
+}
+
+New-AppIcon $icon
 
 $vswhereCandidates = @(
     "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe",
