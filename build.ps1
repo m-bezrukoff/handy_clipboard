@@ -61,27 +61,23 @@ function New-AppIcon {
         $scale = [float]$size / 130.0
         $blue = [System.Drawing.Color]::FromArgb(255, 11, 92, 173)
 
-        $background = New-RoundRectPath 0 0 $size $size (28 * $scale)
-        $backgroundBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 231, 241, 255))
-        $graphics.FillPath($backgroundBrush, $background)
-
-        $paper = New-RoundRectPath (30 * $scale) (21 * $scale) (70 * $scale) (88 * $scale) (12 * $scale)
+        $paper = New-RoundRectPath (24 * $scale) (24 * $scale) (82 * $scale) (94 * $scale) (14 * $scale)
         $paperBrush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)
-        $paperPen = New-Object System.Drawing.Pen ($blue), ([Math]::Max(1.4, 6 * $scale))
+        $paperPen = New-Object System.Drawing.Pen ($blue), ([Math]::Max(2.1, 9 * $scale))
         $graphics.FillPath($paperBrush, $paper)
         $graphics.DrawPath($paperPen, $paper)
 
-        $clip = New-RoundRectPath (48 * $scale) (12 * $scale) (34 * $scale) (22 * $scale) (8 * $scale)
-        $clipBounds = [System.Drawing.RectangleF]::new(48 * $scale, 12 * $scale, 34 * $scale, 22 * $scale)
+        $clip = New-RoundRectPath (45 * $scale) (10 * $scale) (40 * $scale) (26 * $scale) (9 * $scale)
+        $clipBounds = [System.Drawing.RectangleF]::new(45 * $scale, 10 * $scale, 40 * $scale, 26 * $scale)
         $clipBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $clipBounds, ([System.Drawing.Color]::FromArgb(255, 47, 125, 225)), $blue, ([System.Drawing.Drawing2D.LinearGradientMode]::ForwardDiagonal)
         $graphics.FillPath($clipBrush, $clip)
 
         $linePen = New-Object System.Drawing.Pen ($blue), ([Math]::Max(1.3, 6 * $scale))
         $linePen.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
         $linePen.EndCap = [System.Drawing.Drawing2D.LineCap]::Round
-        $graphics.DrawLine($linePen, 43 * $scale, 56 * $scale, 86 * $scale, 56 * $scale)
-        $graphics.DrawLine($linePen, 43 * $scale, 75 * $scale, 78 * $scale, 75 * $scale)
-        $graphics.DrawLine($linePen, 43 * $scale, 94 * $scale, 70 * $scale, 94 * $scale)
+        $graphics.DrawLine($linePen, 40 * $scale, 58 * $scale, 90 * $scale, 58 * $scale)
+        $graphics.DrawLine($linePen, 40 * $scale, 78 * $scale, 82 * $scale, 78 * $scale)
+        $graphics.DrawLine($linePen, 40 * $scale, 98 * $scale, 72 * $scale, 98 * $scale)
 
         $stream = New-Object System.IO.MemoryStream
         $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
@@ -93,8 +89,6 @@ function New-AppIcon {
         $paperPen.Dispose()
         $paperBrush.Dispose()
         $paper.Dispose()
-        $backgroundBrush.Dispose()
-        $background.Dispose()
         $graphics.Dispose()
         $bitmap.Dispose()
         $stream.Dispose()
@@ -184,5 +178,7 @@ cmd.exe /s /c "`"$vcvars`" >nul && $resourceCompile && $compile"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
+
+Remove-Item -LiteralPath $icon -Force -ErrorAction SilentlyContinue
 
 Write-Host "Done: $exe"

@@ -20,13 +20,13 @@ namespace {
 constexpr wchar_t kMainWindowClass[] = L"ExtendedClipboard.MainWindow";
 constexpr wchar_t kPopupWindowClass[] = L"ExtendedClipboard.PopupWindow";
 constexpr wchar_t kSettingsWindowClass[] = L"ExtendedClipboard.SettingsWindow";
+constexpr wchar_t kHotKeyInputClass[] = L"ExtendedClipboard.HotKeyInput";
 constexpr wchar_t kAppName[] = L"Extended Clipboard";
 
 constexpr UINT kTrayMessage = WM_APP + 1;
 constexpr UINT kHotKeyId = 1;
 constexpr UINT kTrayId = 1;
 constexpr UINT kTimerCaptureRetry = 1;
-constexpr UINT kSettingsAutoPaste = 2001;
 constexpr UINT kSettingsClearHistory = 2002;
 constexpr UINT kSettingsClose = 2003;
 constexpr UINT kSettingsExit = 2004;
@@ -59,7 +59,9 @@ constexpr int kPopupMinHeight = 300;
 constexpr int kPopupResizeBorder = 8;
 constexpr DWORD kPopupUiVersion = 2;
 constexpr int kSettingsClientWidth = 500;
-constexpr int kSettingsClientHeight = 456;
+constexpr int kSettingsClientHeight = 520;
+constexpr int kSettingsResizeBorder = 8;
+constexpr int kSettingsHeaderHeight = 96;
 
 constexpr COLORREF kColorWindow = RGB(246, 247, 251);
 constexpr COLORREF kColorSurface = RGB(255, 255, 255);
@@ -111,14 +113,12 @@ HWND g_mainWindow = nullptr;
 HWND g_popupWindow = nullptr;
 HWND g_settingsWindow = nullptr;
 HWND g_listBox = nullptr;
-HWND g_autoPasteCheckBox = nullptr;
 HWND g_startupCheckBox = nullptr;
 HWND g_historyCountLabel = nullptr;
 HWND g_hotKeyControl = nullptr;
 HWND g_hotKeyStatusLabel = nullptr;
 HWND g_targetWindow = nullptr;
 WNDPROC g_originalListProc = nullptr;
-WNDPROC g_originalHotKeyControlProc = nullptr;
 HFONT g_titleFont = nullptr;
 HFONT g_popupTitleFont = nullptr;
 HFONT g_bodyFont = nullptr;
@@ -127,7 +127,6 @@ HBRUSH g_windowBrush = nullptr;
 HBRUSH g_surfaceBrush = nullptr;
 HBRUSH g_editBrush = nullptr;
 bool g_suppressNextClipboardUpdate = false;
-bool g_autoPasteSelectedItem = true;
 bool g_startWithWindows = false;
 bool g_darkThemeSelected = false;
 bool g_hotKeyRegistered = false;
@@ -161,6 +160,69 @@ RECT PopupCloseButtonRect(RECT clientRect);
 void DrawPopupScrollbar(HWND hwnd, HDC dc);
 void DrawXGlyph(HDC dc, const RECT& rect, COLORREF color, int inset);
 
+COLORREF ThemeWindowColor() {
+    return g_darkThemeSelected ? RGB(20, 24, 31) : kColorWindow;
+}
+
+COLORREF ThemeSurfaceColor() {
+    return g_darkThemeSelected ? RGB(30, 36, 46) : kColorSurface;
+}
+
+COLORREF ThemeSurfaceHoverColor() {
+    return g_darkThemeSelected ? RGB(38, 46, 60) : kColorSurfaceHover;
+}
+
+COLORREF ThemeInputColor() {
+    return g_darkThemeSelected ? RGB(24, 30, 39) : RGB(248, 250, 252);
+}
+
+COLORREF ThemeAccentColor() {
+    return g_darkThemeSelected ? RGB(65, 156, 255) : kColorAccent;
+}
+
+COLORREF ThemeAccentSoftColor() {
+    return g_darkThemeSelected ? RGB(28, 58, 92) : kColorAccentSoft;
+}
+
+COLORREF ThemeTextColor() {
+    return g_darkThemeSelected ? RGB(226, 232, 240) : kColorText;
+}
+
+COLORREF ThemeMutedTextColor() {
+    return g_darkThemeSelected ? RGB(148, 163, 184) : kColorMutedText;
+}
+
+COLORREF ThemeBorderColor() {
+    return g_darkThemeSelected ? RGB(61, 72, 88) : kColorBorder;
+}
+
+COLORREF ThemeSelectorFillColor() {
+    return g_darkThemeSelected ? RGB(41, 49, 63) : RGB(238, 244, 251);
+}
+
+COLORREF ThemeSelectedCardColor() {
+    return g_darkThemeSelected ? RGB(31, 48, 68) : RGB(247, 251, 255);
+}
+
+COLORREF ThemeSelectedBorderColor() {
+    return g_darkThemeSelected ? RGB(82, 151, 231) : RGB(147, 197, 253);
+}
+
+void ResetThemeBrushes() {
+    if (g_windowBrush) {
+        DeleteObject(g_windowBrush);
+        g_windowBrush = nullptr;
+    }
+    if (g_surfaceBrush) {
+        DeleteObject(g_surfaceBrush);
+        g_surfaceBrush = nullptr;
+    }
+    if (g_editBrush) {
+        DeleteObject(g_editBrush);
+        g_editBrush = nullptr;
+    }
+}
+
 HFONT CreateUiFont(int pointSize, int weight) {
     HDC screen = GetDC(nullptr);
     const int height = -MulDiv(pointSize, GetDeviceCaps(screen, LOGPIXELSY), 72);
@@ -185,13 +247,13 @@ void EnsureUiResources() {
         g_smallFont = CreateUiFont(9, FW_NORMAL);
     }
     if (!g_windowBrush) {
-        g_windowBrush = CreateSolidBrush(kColorWindow);
+        g_windowBrush = CreateSolidBrush(ThemeWindowColor());
     }
     if (!g_surfaceBrush) {
-        g_surfaceBrush = CreateSolidBrush(kColorSurface);
+        g_surfaceBrush = CreateSolidBrush(ThemeSurfaceColor());
     }
     if (!g_editBrush) {
-        g_editBrush = CreateSolidBrush(RGB(248, 250, 252));
+        g_editBrush = CreateSolidBrush(ThemeInputColor());
     }
 }
 
@@ -276,13 +338,14 @@ void ApplyWindowVisualStyle(HWND hwnd, bool smallCorners) {
     DwmSetWindowAttribute(hwnd, kDwmWindowCornerPreference, &cornerPreference,
                           sizeof(cornerPreference));
 
-    const COLORREF borderColor = smallCorners ? kDwmColorNone : kColorBorder;
+    const COLORREF borderColor = smallCorners ? kDwmColorNone : ThemeBorderColor();
     DwmSetWindowAttribute(hwnd, kDwmBorderColor, &borderColor,
                           sizeof(borderColor));
 
     if (!smallCorners) {
-        const COLORREF captionColor = RGB(249, 250, 252);
-        const COLORREF textColor = kColorText;
+        const COLORREF captionColor =
+            g_darkThemeSelected ? RGB(20, 24, 31) : RGB(249, 250, 252);
+        const COLORREF textColor = ThemeTextColor();
         DwmSetWindowAttribute(hwnd, kDwmCaptionColor, &captionColor,
                               sizeof(captionColor));
         DwmSetWindowAttribute(hwnd, kDwmTextColor, &textColor,
@@ -883,6 +946,7 @@ HotKeyBinding ReadCaptureHookHotKey(UINT keyDownVk) {
 void SetHotKeyControlText(const HotKeyBinding& hotKey) {
     if (g_hotKeyControl) {
         SetWindowTextW(g_hotKeyControl, HotKeyText(hotKey).c_str());
+        InvalidateRect(g_hotKeyControl, nullptr, TRUE);
     }
 }
 
@@ -1142,7 +1206,7 @@ void PasteHistoryIndex(int index) {
     MoveHistoryItemToFront(historyIndex);
     HidePopup();
 
-    if (g_autoPasteSelectedItem && target && IsWindow(target) &&
+    if (target && IsWindow(target) &&
         target != g_popupWindow && target != g_mainWindow &&
         target != g_settingsWindow) {
         SetForegroundWindow(target);
@@ -1233,12 +1297,6 @@ void UpdateSettingsWindow() {
         return;
     }
 
-    if (g_autoPasteCheckBox) {
-        SendMessageW(g_autoPasteCheckBox, BM_SETCHECK,
-                     g_autoPasteSelectedItem ? BST_CHECKED : BST_UNCHECKED, 0);
-        InvalidateRect(g_autoPasteCheckBox, nullptr, TRUE);
-    }
-
     if (g_startupCheckBox) {
         SendMessageW(g_startupCheckBox, BM_SETCHECK,
                      g_startWithWindows ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -1290,7 +1348,6 @@ void ShowSettingsWindow() {
 
     SetWindowPos(g_settingsWindow, HWND_TOP, x, y, 0, 0,
                  SWP_NOSIZE | SWP_SHOWWINDOW);
-    ApplyRoundedRegion(g_settingsWindow, kWindowCornerRadius);
     SetForegroundWindow(g_settingsWindow);
 }
 
@@ -1299,14 +1356,14 @@ void DrawPopupChrome(HWND hwnd, HDC dc) {
 
     RECT client{};
     GetClientRect(hwnd, &client);
-    FillSolidRect(dc, client, kColorSurface);
+    FillSolidRect(dc, client, ThemeSurfaceColor());
 
     RECT titleRect{kPopupContentLeft, 44, client.right - 96, 91};
-    DrawTextInRect(dc, L"История буфера", titleRect, g_popupTitleFont, kColorText,
+    DrawTextInRect(dc, L"История буфера", titleRect, g_popupTitleFont, ThemeTextColor(),
                    DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
 
     const RECT closeButton = PopupCloseButtonRect(client);
-    DrawXGlyph(dc, closeButton, kColorMutedText, 8);
+    DrawXGlyph(dc, closeButton, ThemeMutedTextColor(), 8);
     DrawPopupScrollbar(hwnd, dc);
 }
 
@@ -1522,7 +1579,7 @@ void DrawHistoryListItem(const DRAWITEMSTRUCT& item) {
 
     HDC dc = item.hDC;
     RECT rect = item.rcItem;
-    FillSolidRect(dc, rect, kColorSurface);
+    FillSolidRect(dc, rect, ThemeSurfaceColor());
 
     if (item.itemID == static_cast<UINT>(-1)) {
         return;
@@ -1532,7 +1589,7 @@ void DrawHistoryListItem(const DRAWITEMSTRUCT& item) {
         RECT emptyRect = rect;
         InflateRect(&emptyRect, -16, 0);
         DrawTextInRect(dc, L"История пуста", emptyRect, g_bodyFont,
-                       kColorMutedText, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+                       ThemeMutedTextColor(), DT_CENTER | DT_SINGLELINE | DT_VCENTER);
         return;
     }
 
@@ -1544,15 +1601,15 @@ void DrawHistoryListItem(const DRAWITEMSTRUCT& item) {
     RECT card = HistoryItemCardRect(rect);
     const bool selected = (item.itemState & ODS_SELECTED) != 0;
     DrawRoundedRect(dc, card, 6,
-                    selected ? RGB(247, 251, 255) : kColorSurface,
-                    selected ? RGB(147, 197, 253) : kColorBorder);
+                    selected ? ThemeSelectedCardColor() : ThemeSurfaceColor(),
+                    selected ? ThemeSelectedBorderColor() : ThemeBorderColor());
 
     const RECT deleteButton = HistoryDeleteButtonRect(card);
     DrawDeleteButton(dc, deleteButton);
 
     RECT preview{card.left + 24, card.top + 10, deleteButton.left - 12,
                  card.bottom - 10};
-    DrawTextInRect(dc, g_history[index].preview, preview, g_bodyFont, kColorText,
+    DrawTextInRect(dc, g_history[index].preview, preview, g_bodyFont, ThemeTextColor(),
                    DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
 }
 
@@ -1631,19 +1688,60 @@ LRESULT CALLBACK ListBoxProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPar
     return result;
 }
 
+void DrawHotKeyInput(HWND hwnd, HDC dc) {
+    EnsureUiResources();
+
+    RECT client{};
+    GetClientRect(hwnd, &client);
+    FillSolidRect(dc, client, ThemeSurfaceColor());
+
+    const bool focused = GetFocus() == hwnd;
+    const COLORREF border = focused ? ThemeSelectedBorderColor() : ThemeBorderColor();
+    DrawRoundedRect(dc, client, 12, ThemeInputColor(), border);
+
+    wchar_t text[80]{};
+    GetWindowTextW(hwnd, text, static_cast<int>(std::size(text)));
+    RECT textRect{client.left + 16, client.top, client.right - 12, client.bottom};
+    DrawTextInRect(dc, text, textRect, g_bodyFont, ThemeTextColor(),
+                   DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
+}
+
 LRESULT CALLBACK HotKeyControlProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
     case WM_GETDLGCODE:
         return DLGC_WANTALLKEYS | DLGC_WANTCHARS;
 
+    case WM_LBUTTONDOWN:
+        SetFocus(hwnd);
+        return 0;
+
     case WM_SETFOCUS:
         StartHotKeyCapture();
         SetHotKeyControlText(g_pendingHotKeyBinding);
-        break;
+        InvalidateRect(hwnd, nullptr, TRUE);
+        return 0;
 
     case WM_KILLFOCUS:
         StopHotKeyCapture();
-        break;
+        InvalidateRect(hwnd, nullptr, TRUE);
+        return 0;
+
+    case WM_SETTEXT: {
+        const LRESULT result = DefWindowProcW(hwnd, message, wParam, lParam);
+        InvalidateRect(hwnd, nullptr, TRUE);
+        return result;
+    }
+
+    case WM_ERASEBKGND:
+        return 1;
+
+    case WM_PAINT: {
+        PAINTSTRUCT ps{};
+        HDC dc = BeginPaint(hwnd, &ps);
+        DrawHotKeyInput(hwnd, dc);
+        EndPaint(hwnd, &ps);
+        return 0;
+    }
 
     case WM_KEYDOWN:
     case WM_SYSKEYDOWN: {
@@ -1667,8 +1765,7 @@ LRESULT CALLBACK HotKeyControlProc(HWND hwnd, UINT message, WPARAM wParam, LPARA
         return 0;
     }
 
-    return CallWindowProcW(g_originalHotKeyControlProc, hwnd, message, wParam,
-                           lParam);
+    return DefWindowProcW(hwnd, message, wParam, lParam);
 }
 
 LRESULT CALLBACK PopupProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -1742,6 +1839,7 @@ LRESULT CALLBACK PopupProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam
         break;
 
     case WM_CTLCOLORLISTBOX:
+        EnsureUiResources();
         SetBkMode(reinterpret_cast<HDC>(wParam), TRANSPARENT);
         return reinterpret_cast<LRESULT>(g_surfaceBrush);
 
@@ -1835,15 +1933,69 @@ LRESULT CALLBACK PopupProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam
 }
 
 RECT SettingsThemeSelectorRect() {
-    return RECT{228, 338, 446, 374};
+    return RECT{216, 332, 456, 370};
 }
 
 RECT SettingsLightThemeRect() {
-    return RECT{232, 342, 337, 370};
+    return RECT{220, 336, 336, 366};
 }
 
 RECT SettingsDarkThemeRect() {
-    return RECT{337, 342, 442, 370};
+    return RECT{340, 336, 452, 366};
+}
+
+RECT SettingsCloseButtonRect(RECT clientRect) {
+    return RECT{clientRect.right - 70, 30, clientRect.right - 34, 66};
+}
+
+LRESULT SettingsHitTest(HWND hwnd, LPARAM lParam) {
+    RECT client{};
+    GetClientRect(hwnd, &client);
+
+    POINT point{static_cast<LONG>(static_cast<short>(LOWORD(lParam))),
+                static_cast<LONG>(static_cast<short>(HIWORD(lParam)))};
+    ScreenToClient(hwnd, &point);
+
+    const bool left = point.x < kSettingsResizeBorder;
+    const bool right = point.x >= client.right - kSettingsResizeBorder;
+    const bool top = point.y < kSettingsResizeBorder;
+    const bool bottom = point.y >= client.bottom - kSettingsResizeBorder;
+
+    if (top && left) {
+        return HTTOPLEFT;
+    }
+    if (top && right) {
+        return HTTOPRIGHT;
+    }
+    if (bottom && left) {
+        return HTBOTTOMLEFT;
+    }
+    if (bottom && right) {
+        return HTBOTTOMRIGHT;
+    }
+    if (left) {
+        return HTLEFT;
+    }
+    if (right) {
+        return HTRIGHT;
+    }
+    if (top) {
+        return HTTOP;
+    }
+    if (bottom) {
+        return HTBOTTOM;
+    }
+
+    const RECT closeButton = SettingsCloseButtonRect(client);
+    if (PtInRect(&closeButton, point)) {
+        return HTCLIENT;
+    }
+
+    if (point.y < kSettingsHeaderHeight) {
+        return HTCAPTION;
+    }
+
+    return HTCLIENT;
 }
 
 void DrawCheckMark(HDC dc, const RECT& rect, COLORREF color) {
@@ -1886,26 +2038,49 @@ void DrawSettingsThemeSelector(HDC dc) {
     const RECT selector = SettingsThemeSelectorRect();
     const RECT light = SettingsLightThemeRect();
     const RECT dark = SettingsDarkThemeRect();
-    const COLORREF selectorFill = RGB(238, 244, 251);
-    const COLORREF selectedFill = g_darkThemeSelected ? kColorAccent : kColorSurface;
-    const COLORREF selectedText = g_darkThemeSelected ? RGB(255, 255, 255) : kColorText;
-    const COLORREF mutedText = kColorMutedText;
+    const COLORREF selectorFill = ThemeSelectorFillColor();
+    const COLORREF selectedFill =
+        g_darkThemeSelected ? ThemeAccentColor() : ThemeSurfaceColor();
+    const COLORREF selectedText =
+        g_darkThemeSelected ? RGB(255, 255, 255) : ThemeTextColor();
+    const COLORREF mutedText = ThemeMutedTextColor();
 
-    DrawRoundedRect(dc, selector, 18, selectorFill, RGB(203, 213, 225));
+    DrawRoundedRect(dc, selector, 18, selectorFill, ThemeBorderColor());
     DrawRoundedRect(dc, g_darkThemeSelected ? dark : light, 14, selectedFill,
-                    RGB(216, 225, 236));
+                    ThemeBorderColor());
 
-    DrawSunIcon(dc, 258, 356);
-    RECT lightText{280, 346, 335, 368};
-    DrawTextInRect(dc, L"Светлая", lightText, g_smallFont,
-                   g_darkThemeSelected ? mutedText : selectedText,
-                   DT_SINGLELINE | DT_VCENTER);
+    const int centerY = selector.top + RectHeight(selector) / 2;
+    const auto drawChoice = [&](const RECT& choice, std::wstring_view text,
+                                bool moon, COLORREF textColor) {
+        SIZE textSize{};
+        HGDIOBJ oldFont = SelectObject(dc, g_smallFont);
+        GetTextExtentPoint32W(dc, text.data(), static_cast<int>(text.size()),
+                              &textSize);
+        SelectObject(dc, oldFont);
 
-    DrawMoonIcon(dc, 363, 356, g_darkThemeSelected ? kColorAccent : selectorFill);
-    RECT darkText{385, 346, 438, 368};
-    DrawTextInRect(dc, L"Темная", darkText, g_smallFont,
-                   g_darkThemeSelected ? selectedText : mutedText,
-                   DT_SINGLELINE | DT_VCENTER);
+        constexpr int iconSize = 16;
+        constexpr int iconTextGap = 10;
+        const int contentWidth = iconSize + iconTextGap + textSize.cx;
+        const int startX = choice.left +
+                           std::max(0, (RectWidth(choice) - contentWidth) / 2);
+        const int iconCenterX = startX + iconSize / 2;
+        if (moon) {
+            DrawMoonIcon(dc, iconCenterX, centerY,
+                         g_darkThemeSelected ? ThemeAccentColor() : selectorFill);
+        } else {
+            DrawSunIcon(dc, iconCenterX, centerY);
+        }
+
+        RECT textRect{startX + iconSize + iconTextGap, choice.top,
+                      choice.right - 4, choice.bottom};
+        DrawTextInRect(dc, text, textRect, g_smallFont, textColor,
+                       DT_SINGLELINE | DT_VCENTER);
+    };
+
+    drawChoice(light, L"Светлая", false,
+               g_darkThemeSelected ? mutedText : selectedText);
+    drawChoice(dark, L"Темная", true,
+               g_darkThemeSelected ? selectedText : mutedText);
 }
 
 void DrawSettingsChrome(HWND hwnd, HDC dc) {
@@ -1913,17 +2088,14 @@ void DrawSettingsChrome(HWND hwnd, HDC dc) {
 
     RECT client{};
     GetClientRect(hwnd, &client);
-    FillSolidRect(dc, client, kColorWindow);
+    FillSolidRect(dc, client, ThemeWindowColor());
 
-    DrawRoundedRect(dc, RECT{24, 22, client.right - 24, 92}, 18,
-                    RGB(248, 251, 255), kColorBorder);
-    DrawRoundedRect(dc, RECT{24, 112, client.right - 24, 236}, 18,
-                    kColorSurface, kColorBorder);
-    DrawRoundedRect(dc, RECT{24, 256, client.right - 24, 374}, 18,
-                    kColorSurface, kColorBorder);
+    DrawXGlyph(dc, SettingsCloseButtonRect(client), ThemeMutedTextColor(), 8);
 
-    DrawRoundedRect(dc, RECT{46, 160, 260, 198}, 12,
-                    RGB(248, 250, 252), RGB(203, 213, 225));
+    DrawRoundedRect(dc, RECT{32, 104, client.right - 32, 228}, 18,
+                    ThemeSurfaceColor(), ThemeBorderColor());
+    DrawRoundedRect(dc, RECT{32, 250, client.right - 32, 388}, 18,
+                    ThemeSurfaceColor(), ThemeBorderColor());
 
     DrawSettingsThemeSelector(dc);
 }
@@ -1933,16 +2105,14 @@ bool DrawSettingsControl(const DRAWITEMSTRUCT& item) {
     RECT rect = item.rcItem;
 
     switch (item.CtlID) {
-    case kSettingsAutoPaste:
     case kSettingsStartup: {
-        const bool checked = item.CtlID == kSettingsAutoPaste
-                                 ? g_autoPasteSelectedItem
-                                 : g_startWithWindows;
-        FillSolidRect(dc, rect, kColorSurface);
+        const bool checked = g_startWithWindows;
+        FillSolidRect(dc, rect, ThemeSurfaceColor());
 
         RECT box{0, 1, 22, 23};
-        DrawRoundedRect(dc, box, 6, checked ? kColorAccent : kColorSurface,
-                        checked ? kColorAccent : RGB(203, 213, 225));
+        DrawRoundedRect(dc, box, 6,
+                        checked ? ThemeAccentColor() : ThemeSurfaceColor(),
+                        checked ? ThemeAccentColor() : ThemeBorderColor());
         if (checked) {
             DrawCheckMark(dc, box, RGB(255, 255, 255));
         }
@@ -1950,7 +2120,22 @@ bool DrawSettingsControl(const DRAWITEMSTRUCT& item) {
         wchar_t text[160]{};
         GetWindowTextW(item.hwndItem, text, static_cast<int>(std::size(text)));
         RECT textRect{36, 0, rect.right, rect.bottom};
-        DrawTextInRect(dc, text, textRect, g_bodyFont, kColorText,
+        DrawTextInRect(dc, text, textRect, g_bodyFont, ThemeTextColor(),
+                       DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
+        return true;
+    }
+
+    case kSettingsHotKey: {
+        const bool focused = (item.itemState & ODS_FOCUS) != 0;
+        FillSolidRect(dc, rect, ThemeSurfaceColor());
+        const COLORREF border =
+            focused ? ThemeSelectedBorderColor() : ThemeBorderColor();
+        DrawRoundedRect(dc, rect, 12, ThemeInputColor(), border);
+
+        wchar_t text[80]{};
+        GetWindowTextW(item.hwndItem, text, static_cast<int>(std::size(text)));
+        RECT textRect{rect.left + 16, rect.top, rect.right - 12, rect.bottom};
+        DrawTextInRect(dc, text, textRect, g_bodyFont, ThemeTextColor(),
                        DT_SINGLELINE | DT_VCENTER | DT_END_ELLIPSIS);
         return true;
     }
@@ -1959,14 +2144,14 @@ bool DrawSettingsControl(const DRAWITEMSTRUCT& item) {
     case kSettingsExit: {
         const bool pressed = (item.itemState & ODS_SELECTED) != 0;
         FillSolidRect(dc, rect,
-                      item.CtlID == kSettingsApplyHotKey ? kColorSurface
-                                                         : kColorWindow);
-        COLORREF fill = kColorSurface;
-        COLORREF border = RGB(203, 213, 225);
-        COLORREF textColor = RGB(71, 85, 105);
+                      item.CtlID == kSettingsApplyHotKey ? ThemeSurfaceColor()
+                                                         : ThemeWindowColor());
+        COLORREF fill = ThemeSurfaceColor();
+        COLORREF border = ThemeBorderColor();
+        COLORREF textColor = ThemeMutedTextColor();
 
         if (item.CtlID == kSettingsApplyHotKey) {
-            fill = pressed ? RGB(8, 79, 156) : kColorAccent;
+            fill = pressed ? RGB(8, 79, 156) : ThemeAccentColor();
             border = fill;
             textColor = RGB(255, 255, 255);
         } else if (item.CtlID == kSettingsExit) {
@@ -1974,7 +2159,7 @@ bool DrawSettingsControl(const DRAWITEMSTRUCT& item) {
             border = RGB(254, 202, 202);
             textColor = RGB(185, 28, 28);
         } else if (pressed) {
-            fill = RGB(248, 250, 252);
+            fill = ThemeSurfaceHoverColor();
         }
 
         DrawRoundedRect(dc, rect, 12, fill, border);
@@ -1990,6 +2175,51 @@ bool DrawSettingsControl(const DRAWITEMSTRUCT& item) {
     return false;
 }
 
+void ApplyThemeToOpenWindows() {
+    ResetThemeBrushes();
+    EnsureUiResources();
+
+    if (g_popupWindow) {
+        ApplyWindowVisualStyle(g_popupWindow, true);
+        RedrawWindow(g_popupWindow, nullptr, nullptr,
+                     RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+    }
+    if (g_listBox) {
+        InvalidateRect(g_listBox, nullptr, TRUE);
+    }
+    if (g_settingsWindow) {
+        ApplyWindowVisualStyle(g_settingsWindow, true);
+        RedrawWindow(g_settingsWindow, nullptr, nullptr,
+                     RDW_INVALIDATE | RDW_ERASE | RDW_ALLCHILDREN);
+    }
+    if (g_hotKeyControl) {
+        InvalidateRect(g_hotKeyControl, nullptr, TRUE);
+    }
+    if (g_startupCheckBox) {
+        InvalidateRect(g_startupCheckBox, nullptr, TRUE);
+    }
+}
+
+bool HandleSettingsThemeClick(POINT point) {
+    const RECT lightTheme = SettingsLightThemeRect();
+    const RECT darkTheme = SettingsDarkThemeRect();
+    if (PtInRect(&lightTheme, point)) {
+        if (g_darkThemeSelected) {
+            g_darkThemeSelected = false;
+            ApplyThemeToOpenWindows();
+        }
+        return true;
+    }
+    if (PtInRect(&darkTheme, point)) {
+        if (!g_darkThemeSelected) {
+            g_darkThemeSelected = true;
+            ApplyThemeToOpenWindows();
+        }
+        return true;
+    }
+    return false;
+}
+
 LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
     case WM_NCCREATE:
@@ -1998,7 +2228,7 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
     case WM_CREATE: {
         EnsureUiResources();
-        ApplyWindowVisualStyle(hwnd, false);
+        ApplyWindowVisualStyle(hwnd, true);
         g_startWithWindows = IsStartupEnabled();
         const auto instance = GetModuleHandleW(nullptr);
         const auto setBodyFont = [](HWND control) {
@@ -2010,80 +2240,63 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                          TRUE);
         };
         const auto setTitleFont = [](HWND control) {
-            SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(g_popupTitleFont),
+            SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(g_titleFont),
                          TRUE);
         };
 
         HWND title = CreateWindowExW(0, L"STATIC", L"Extended Clipboard",
                                     WS_CHILD | WS_VISIBLE,
-                                    46, 32, 360, 28, hwnd, nullptr, instance,
+                                    40, 34, 360, 32, hwnd, nullptr, instance,
                                     nullptr);
         setTitleFont(title);
 
         g_historyCountLabel = CreateWindowExW(0, L"STATIC", L"",
                                               WS_CHILD | WS_VISIBLE,
-                                              46, 62, 360, 20, hwnd, nullptr,
+                                              40, 68, 360, 22, hwnd, nullptr,
                                               instance, nullptr);
         setSmallFont(g_historyCountLabel);
 
         HWND hotKeyLabel = CreateWindowExW(0, L"STATIC", L"Комбинация для истории",
                                            WS_CHILD | WS_VISIBLE,
-                                           46, 132, 220, 22, hwnd, nullptr,
+                                           56, 126, 300, 24, hwnd, nullptr,
                                            instance, nullptr);
         setBodyFont(hotKeyLabel);
 
         g_hotKeyControl = CreateWindowExW(
-            0, L"EDIT", nullptr,
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | ES_READONLY | ES_AUTOHSCROLL,
-            58, 168, 190, 22, hwnd,
+            0, kHotKeyInputClass, nullptr,
+            WS_CHILD | WS_VISIBLE | WS_TABSTOP,
+            56, 160, 224, 38, hwnd,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(kSettingsHotKey)),
             instance, nullptr);
         setBodyFont(g_hotKeyControl);
-        g_originalHotKeyControlProc = reinterpret_cast<WNDPROC>(
-            SetWindowLongPtrW(g_hotKeyControl, GWLP_WNDPROC,
-                              reinterpret_cast<LONG_PTR>(HotKeyControlProc)));
         SetHotKeyControlText(g_pendingHotKeyBinding);
 
         HWND applyButton = CreateWindowExW(
             0, L"BUTTON", L"Применить",
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            278, 160, 120, 38, hwnd,
+            304, 160, 132, 38, hwnd,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(kSettingsApplyHotKey)),
             instance, nullptr);
         setBodyFont(applyButton);
 
-        HWND trayNote = CreateWindowExW(
-            0, L"STATIC", L"ЛКМ по значку: история. ПКМ: настройки.",
-            WS_CHILD | WS_VISIBLE,
-            46, 208, 380, 18, hwnd, nullptr, instance, nullptr);
-        setSmallFont(trayNote);
-
-        g_autoPasteCheckBox = CreateWindowExW(
-            0, L"BUTTON", L"Вставлять выбранную запись автоматически",
-            WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            46, 276, 390, 24, hwnd,
-            reinterpret_cast<HMENU>(static_cast<UINT_PTR>(kSettingsAutoPaste)),
-            instance, nullptr);
-        setBodyFont(g_autoPasteCheckBox);
-
         g_startupCheckBox = CreateWindowExW(
             0, L"BUTTON", L"Запускаться вместе с системой",
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            46, 310, 360, 24, hwnd,
+            56, 280, 360, 26, hwnd,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(kSettingsStartup)),
             instance, nullptr);
         setBodyFont(g_startupCheckBox);
 
         HWND themeLabel = CreateWindowExW(0, L"STATIC", L"Тема интерфейса",
                                           WS_CHILD | WS_VISIBLE,
-                                          46, 348, 170, 22, hwnd, nullptr,
+                                          56, 339, 150, 24, hwnd, nullptr,
                                           instance, nullptr);
         setBodyFont(themeLabel);
 
         HWND exitButton = CreateWindowExW(
             0, L"BUTTON", L"Выход",
             WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-            364, 398, 112, 38, hwnd,
+            356, 448, 112, 38, hwnd,
             reinterpret_cast<HMENU>(static_cast<UINT_PTR>(kSettingsExit)),
             instance, nullptr);
         setBodyFont(exitButton);
@@ -2092,8 +2305,23 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         return 0;
     }
 
+    case WM_NCCALCSIZE:
+        if (wParam) {
+            return 0;
+        }
+        break;
+
+    case WM_NCHITTEST:
+        return SettingsHitTest(hwnd, lParam);
+
+    case WM_GETMINMAXINFO: {
+        auto* limits = reinterpret_cast<MINMAXINFO*>(lParam);
+        limits->ptMinTrackSize.x = kSettingsClientWidth;
+        limits->ptMinTrackSize.y = kSettingsClientHeight;
+        return 0;
+    }
+
     case WM_SIZE:
-        ApplyRoundedRegion(hwnd, kWindowCornerRadius);
         InvalidateRect(hwnd, nullptr, TRUE);
         return 0;
 
@@ -2115,19 +2343,27 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         }
         break;
 
+    case WM_LBUTTONDOWN: {
+        POINT point{static_cast<short>(LOWORD(lParam)),
+                    static_cast<short>(HIWORD(lParam))};
+        if (HandleSettingsThemeClick(point)) {
+            return 0;
+        }
+        break;
+    }
+
     case WM_LBUTTONUP: {
         POINT point{static_cast<short>(LOWORD(lParam)),
                     static_cast<short>(HIWORD(lParam))};
-        const RECT lightTheme = SettingsLightThemeRect();
-        const RECT darkTheme = SettingsDarkThemeRect();
-        if (PtInRect(&lightTheme, point)) {
-            g_darkThemeSelected = false;
-            InvalidateRect(hwnd, nullptr, TRUE);
+        RECT client{};
+        GetClientRect(hwnd, &client);
+        const RECT closeButton = SettingsCloseButtonRect(client);
+        if (PtInRect(&closeButton, point)) {
+            ShowWindow(hwnd, SW_HIDE);
             return 0;
         }
-        if (PtInRect(&darkTheme, point)) {
-            g_darkThemeSelected = true;
-            InvalidateRect(hwnd, nullptr, TRUE);
+
+        if (HandleSettingsThemeClick(point)) {
             return 0;
         }
         break;
@@ -2136,32 +2372,28 @@ LRESULT CALLBACK SettingsProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     case WM_CTLCOLORSTATIC: {
         HDC dc = reinterpret_cast<HDC>(wParam);
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, kColorText);
+        SetTextColor(dc, ThemeTextColor());
         return reinterpret_cast<LRESULT>(GetStockObject(HOLLOW_BRUSH));
     }
 
     case WM_CTLCOLOREDIT: {
         HDC dc = reinterpret_cast<HDC>(wParam);
         SetBkMode(dc, OPAQUE);
-        SetBkColor(dc, RGB(248, 250, 252));
-        SetTextColor(dc, kColorText);
+        SetBkColor(dc, ThemeInputColor());
+        SetTextColor(dc, ThemeTextColor());
+        EnsureUiResources();
         return reinterpret_cast<LRESULT>(g_editBrush);
     }
 
     case WM_CTLCOLORBTN: {
         HDC dc = reinterpret_cast<HDC>(wParam);
         SetBkMode(dc, TRANSPARENT);
-        SetTextColor(dc, kColorText);
+        SetTextColor(dc, ThemeTextColor());
         return reinterpret_cast<LRESULT>(GetStockObject(HOLLOW_BRUSH));
     }
 
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
-        case kSettingsAutoPaste:
-            g_autoPasteSelectedItem = !g_autoPasteSelectedItem;
-            UpdateSettingsWindow();
-            return 0;
-
         case kSettingsStartup:
             g_startWithWindows = !g_startWithWindows;
             if (!SetStartupEnabled(g_startWithWindows)) {
@@ -2305,8 +2537,16 @@ bool RegisterWindowClasses(HINSTANCE instance) {
     settingsClass.hIconSm = smallAppIcon;
     settingsClass.lpszClassName = kSettingsWindowClass;
 
+    WNDCLASSEXW hotKeyInputClass{};
+    hotKeyInputClass.cbSize = sizeof(hotKeyInputClass);
+    hotKeyInputClass.lpfnWndProc = HotKeyControlProc;
+    hotKeyInputClass.hInstance = instance;
+    hotKeyInputClass.hCursor = LoadCursorW(nullptr, IDC_IBEAM);
+    hotKeyInputClass.hbrBackground = nullptr;
+    hotKeyInputClass.lpszClassName = kHotKeyInputClass;
+
     return RegisterClassExW(&mainClass) && RegisterClassExW(&popupClass) &&
-           RegisterClassExW(&settingsClass);
+           RegisterClassExW(&settingsClass) && RegisterClassExW(&hotKeyInputClass);
 }
 
 } // namespace
@@ -2346,10 +2586,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         CW_USEDEFAULT, CW_USEDEFAULT, kPopupWidth, 360,
         nullptr, nullptr, instance, nullptr);
 
-    constexpr DWORD settingsStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
+    constexpr DWORD settingsStyle = WS_POPUP | WS_THICKFRAME;
     constexpr DWORD settingsExStyle = WS_EX_TOOLWINDOW;
     RECT settingsRect{0, 0, kSettingsClientWidth, kSettingsClientHeight};
-    AdjustWindowRectEx(&settingsRect, settingsStyle, FALSE, settingsExStyle);
 
     g_settingsWindow = CreateWindowExW(
         settingsExStyle, kSettingsWindowClass, L"Настройки Extended Clipboard",
